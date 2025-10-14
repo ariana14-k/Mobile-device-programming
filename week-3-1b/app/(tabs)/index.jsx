@@ -1,6 +1,7 @@
 import { StyleSheet, Text, View, Button, StatusBar, TextInput, TouchableOpacity, FlatList } from 'react-native'
 import React, { useState } from 'react'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import {Link, router} from 'expo-router'
 const index = () => {
   const [tasks, setTasks] = useState([])
   const [task, setTask] = useState("")
@@ -49,8 +50,10 @@ const index = () => {
 
       <FlatList style={styles.list} data={tasks} keyExtractor={(item) => item.id} renderItem={({item}) => (
         <View style={styles.taskItem}>
+          <Link href="/task/1">
           <Text>{item.title}</Text>
-          <TouchableOpacity onPress={() => deleteTask(item.id)}>
+          </Link>
+          <TouchableOpacity onPress={() => router.back()}>
             <Text style={{color: 'red'}}>Delete</Text>
           </TouchableOpacity>
         </View>
