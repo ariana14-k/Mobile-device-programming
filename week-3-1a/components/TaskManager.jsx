@@ -1,27 +1,44 @@
 import { Link } from "expo-router";
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View, Modal } from 'react-native'
 import { useEffect, useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuth } from "../context/AuthContext";
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from "firebase/firestore";
+import { db } from "../firebase";
+import ConfirmModal from "./ConfirmModal";
 
 export default function TaskManager() {
     const [tasks, setTasks] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [modalVisible, setModalVisible] = useState(false);
     const [selectedTask, setSelectedTask] = useState(null);
+    const { user } = useAuth();
+    const [modalVisible, setModalVisible] = useState(false);
+    const [modalType, setModalType] = useState("");
+    const [modalMessage, setModalMessage] = useState("");
 
     useEffect(() => {
-        loadTasks();
+        if (!user) return;
+        setLoading(true)
+
+        const tasksRef = collection(db, "users", user.uid, "tasks")
+
+        const ordered = query(tasksRef, orderBy("createdAt", "desc"));
+
+        const unsubscribe = onSnapshot(ordered, (snapshot) => {
+            const fetchedData = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data()
+            }));
+            setTasks(fetchedData)
+            setLoading(false)
+        },
+            (error) => {
+                console.log("Error loading tasks", error)
+                setLoading(false)
+            })
+
+        return () => unsubscribe();
     }, [])
 
-    const loadTasks = async () => {
-        try {
-            const stored = await AsyncStorage.getItem("tasks");
-            const tasks = stored ? JSON.parse(stored) : [];
-            setTasks(tasks)
-        } catch (error) {
-            console.log("Error loading tasks:", error);
-        }
-    }
 
     const fetchExternalAPI = async () => {
         try {
@@ -47,27 +64,31 @@ export default function TaskManager() {
         }
     }
 
-    const deleteTask = (id) => {
-        setSelectedTask(id);
+    const deleteTask = (task) => {
+        setSelectedTask(task);
         setModalVisible(true);
+        setModalMessage(`Are you sure you want to delete "${task.title}"?`)
+        setModalType("error");
     };
 
-    const handleModalCancel = () => {
-        setModalVisible(false)
+    const handleOnConfirmDelete = async () => {
+        try {
+            await deleteDoc(doc(db, "users", user.uid, "tasks", selectedTask.id));
+
+            setModalVisible(true);
+            setModalType("success");
+            setModalMessage("Task deleted successfully!");
+        } catch (error) {
+            setModalVisible(true);
+            setModalType("error");
+            setModalMessage("Task could not delete. Please try again!");
+        }
 
     }
 
     const handleModalClose = async () => {
-        try {
-            const updatedTasks = tasks.filter((task) => task.id !== selectedTask);
-            await AsyncStorage.setItem("tasks", JSON.stringify(updatedTasks));
-            setTasks(updatedTasks);
-            setModalVisible(false)
-
-        } catch (error) {
-            console.log("Error deleting task:", error);
-        }
-
+        setModalVisible(false);
+        setSelectedTask(null);
     }
 
     const renderEmpty = () => (
@@ -77,9 +98,9 @@ export default function TaskManager() {
     const renderHeader = () => (
         <View>
             <Text style={styles.listHeader}>Your Tasks</Text>
-            <TouchableOpacity style={styles.fetchBtn} onPress={fetchExternalAPI}>
+            {/* <TouchableOpacity style={styles.fetchBtn} onPress={fetchExternalAPI}>
                 <Text style={styles.fetchText}>Fetch Example Tasks (API)</Text>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
         </View>
     );
 
@@ -103,9 +124,9 @@ export default function TaskManager() {
                     renderItem={({ item }) => (
                         <View style={styles.taskItem}>
                             <Link href={`/task/${item.id}`}>
-                                <Text>{item.title}</Text>
+                                <Text style={item.completed ? styles.completed : null}>{item.title}</Text>
                             </Link>
-                            <TouchableOpacity onPress={() => deleteTask(item.id)}>
+                            <TouchableOpacity onPress={() => deleteTask(item)}>
                                 <Text style={{ color: "red" }}>Delete</Text>
                             </TouchableOpacity>
                         </View>
@@ -116,22 +137,14 @@ export default function TaskManager() {
                     ListFooterComponent={renderFooter}
                 />
             )}
-            <Modal visible={modalVisible} transparent animationType="fade">
-                <View style={styles.modalOVerlay}>
-                    <View style={styles.modalBox}>
-                        <Text style={styles.modalTitle}>Do you want to delete this task?</Text>
-                        <View style={styles.modalBtnContainer}>
-                            <TouchableOpacity onPress={handleModalCancel}>
-                                <Text style={styles.modalCancelBtn}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={handleModalClose}>
-                                <Text style={styles.modalBtn}>OK</Text>
-                            </TouchableOpacity>
-                        </View>
-
-                    </View>
-                </View>
-            </Modal>
+            <ConfirmModal
+                visible={modalVisible}
+                type={modalType}
+                message={modalMessage}
+                onClose={handleModalClose}
+                showConfirm={selectedTask !== null}
+                onConfirm={selectedTask ? handleOnConfirmDelete : null}
+            />
         </View>
 
     )
@@ -147,6 +160,8 @@ const styles = StyleSheet.create({
         borderRadius: 8,
         marginBottom: 4,
         elevation: 2,
+        minWidth: 250,
+        gap: 20
     },
     separator: { height: 8 },
     emptyText: {
@@ -215,5 +230,9 @@ const styles = StyleSheet.create({
         color: "black",
         padding: 10,
         borderRadius: 8
+    },
+    completed: {
+        textDecorationLine: "line-through",
+        color: "#555"
     }
 });

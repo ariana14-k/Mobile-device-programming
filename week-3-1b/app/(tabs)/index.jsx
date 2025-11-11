@@ -4,10 +4,14 @@ import TaskManager from "../../components/TaskManager";
 import { useEffect, useState } from "react";
 import {onAuthStateChanged} from 'firebase/auth'
 import {auth} from '../../firebase'
+import { useAuth } from "../../context/AuthContext";
 
 export default function Home() {
   const [userEmail, setUserEmail] = useState("")
   const [loading, setLoading] = useState(true)
+  const {user} =  useAuth();
+
+  console.log("user", user)
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged((user) => {

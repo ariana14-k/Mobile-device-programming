@@ -1,12 +1,19 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal } from "react-native";
 import { Link, router } from "expo-router";
 import { useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { addDoc, collection } from "firebase/firestore";
+import { db } from "../firebase";
+import { useAuth } from "../context/AuthContext";
+import ConfirmModal from "../components/ConfirmModal";
 
 export default function AddTask() {
   const [task, setTask] = useState("");
   const [error, setError] = useState("");
   const [modalVisible, setModalVisible] = useState(false);
+  const [modalType, setModalType] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
+
+  const {user} = useAuth();
 
   const addTask = async () => {
     if (task.trim() === "") {
@@ -19,17 +26,14 @@ export default function AddTask() {
     }
 
     setError("");
-    const newTask = { id: Date.now().toString(), title: task };
+    const newTask = { title: task, completed: false, createdAt: new Date() };
 
     try {
-      const stored = await AsyncStorage.getItem("tasks");
-      const tasks = stored ? JSON.parse(stored) : [];
-
-      const updated = [...tasks, newTask];
-      await AsyncStorage.setItem("tasks", JSON.stringify(updated));
-
+      await addDoc(collection(db, "users", user.uid, "tasks"), newTask);
       setTask("");
       setModalVisible(true); 
+      setModalType("success")
+      setModalMessage("Task created successfully!");
     } catch (e) {
       console.log("Error saving task:", e);
     }
@@ -63,16 +67,12 @@ export default function AddTask() {
 
       {error ? <Text style={{ color: "red" }}>{error}</Text> : null}
 
-      <Modal visible={modalVisible} transparent animationType="fade">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalBox}>
-            <Text style={{ fontSize: 16, marginBottom: 10 }}>Task added successfully!</Text>
-            <TouchableOpacity style={styles.modalBtn} onPress={handleCloseModal}>
-              <Text style={{ color: "white", fontWeight: "bold" }}>OK</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <ConfirmModal
+        visible={modalVisible}
+        type={modalType}
+        message={modalMessage}
+        onClose={handleCloseModal}
+      />
     </View>
   );
 }

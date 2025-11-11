@@ -1,6 +1,7 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
+import { getFirestore } from "firebase/firestore";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -11,11 +12,14 @@ const firebaseConfig = {
   projectId: "task-manager-7120b",
   storageBucket: "task-manager-7120b.firebasestorage.app",
   messagingSenderId: "535939075835",
-  appId: "1:535939075835:web:4c890bf2a1a68579bc6a5e"
+  appId: "1:535939075835:web:4c890bf2a1a68579bc6a5e",
+  webClientId: "535939075835-rndv56decogb8rhva5as7blm7khsf2bt.apps.googleusercontent.com"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 
 export const auth = getAuth(app);
+export const db = getFirestore(app);
+
 export default app;

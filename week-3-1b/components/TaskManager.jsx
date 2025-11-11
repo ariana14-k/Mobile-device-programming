@@ -1,29 +1,41 @@
 import { Link } from "expo-router";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, Modal } from 'react-native'
-import { useState, useEffect, Activity } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, Modal, ActivityIndicator } from 'react-native'
+import { useState, useEffect } from "react";
+import { useAuth } from "../context/AuthContext";
+import { collection, deleteDoc, doc, onSnapshot, orderBy, query } from "firebase/firestore";
+import { db } from "../firebase";
+import ConfirmModal from "./ConfirmModal";
 
 export default function TaskManager() {
     const [tasks, setTasks] = useState([]);
     const [selectedTask, setSelectedTask] = useState(null);
     const [modalVisible, setModalVisible] = useState(false);
+    const [modalMessage, setModalMessage] = useState("")
+    const [modalType, setModalType] = useState("")
     const [loading, setLoading] = useState(false);
+    const { user } = useAuth();
 
     useEffect(() => {
-        loadTasks();
+        if (!user) return;
+        setLoading(true)
+
+        const tasksRef = collection(db, "users", user.uid, "tasks");
+        const dataQuery = query(tasksRef, orderBy("createdAt", "desc"));
+
+        const unsubscribe = onSnapshot(dataQuery, (snapshot) => {
+            const fetchedData = snapshot.docs.map((doc) => ({
+                id: doc.id,
+                ...doc.data()
+            }))
+
+            setTasks(fetchedData);
+            setLoading(false);
+        })
+
+        return () => unsubscribe();
+
     }, [])
 
-    const loadTasks = async () => {
-        try {
-            const stored = await AsyncStorage.getItem("tasks");
-            const loadedTasks = stored ? JSON.parse(stored) : [];
-            setTasks(loadedTasks);
-
-        } catch (error) {
-            console.log("Error loading tasks:", error);
-        }
-
-    }
 
     const fetchExternalAPI = async () => {
         try {
@@ -47,11 +59,26 @@ export default function TaskManager() {
         }
     }
 
-    const deleteTask = (id) => {
+    const deleteTask = (task) => {
         setModalVisible(true);
-        setSelectedTask(id);
+        setModalType("error");
+        setModalMessage(`Are you sure you want to delete "${task.title}"`);
+        setSelectedTask(task);
     };
 
+    const handleOnConfirmDelete = async () => {
+        if (!user) return;
+        try {
+            await deleteDoc(doc(db, "users", user.uid, "tasks", selectedTask.id));
+            setModalType("success");
+            setModalMessage("Task deleted successfully!")
+            setModalVisible(false)
+
+        } catch (error) {
+            console.log("error: ", error)
+        }
+
+    }
     const renderEmpty = () => (
         <Text style={styles.emptyText}>No tasks yet. Add your first task!</Text>
     );
@@ -59,11 +86,11 @@ export default function TaskManager() {
     const renderHeader = () => (
         <View style={{ flex: 1 }}>
             <Text style={styles.listHeader}>Your Tasks</Text>
-            <TouchableOpacity onPress={fetchExternalAPI}>
+            {/* <TouchableOpacity onPress={fetchExternalAPI}>
                 <View style={styles.fetchBtn}>
                     <Text style={styles.fetchTitle}>Fetch External API</Text>
                 </View>
-            </TouchableOpacity>
+            </TouchableOpacity> */}
 
         </View>
     );
@@ -76,23 +103,11 @@ export default function TaskManager() {
         <View style={styles.separator} />
     );
 
-    const handleModalCancel = () => {
+    const handleModalClose = () => {
         setModalVisible(false);
         setSelectedTask(null);
     }
 
-    const handleModalClose = async () => {
-        try {
-            const updatedTasks = tasks.filter((item) => item.id !== selectedTask);
-            await AsyncStorage.setItem("tasks", JSON.stringify(updatedTasks));
-            setTasks(updatedTasks);
-            setModalVisible(false);
-            setSelectedTask(null);
-
-        } catch (error) {
-            console.log("Error deleting task:", error);
-        }
-    }
     return (
         <View style={{ flex: 1, width: '100%' }}>
             {loading ? (
@@ -105,9 +120,9 @@ export default function TaskManager() {
                     renderItem={({ item }) => (
                         <View style={styles.taskItem}>
                             <Link href={`/task/${item.id}`}>
-                                <Text>{item.title}</Text>
+                                <Text style={item.completed ? styles.completed : null}>{item.title}</Text>
                             </Link>
-                            <TouchableOpacity onPress={() => deleteTask(item.id)}>
+                            <TouchableOpacity onPress={() => deleteTask(item)}>
                                 <Text style={{ color: "red" }}>Delete</Text>
                             </TouchableOpacity>
                         </View>
@@ -119,21 +134,14 @@ export default function TaskManager() {
                 />
             )}
 
-            <Modal visible={modalVisible} transparent animationType="slide">
-                <View style={styles.modalOverlay}>
-                    <View style={styles.modalBox}>
-                        <Text style={styles.modalTitle}>Do you want to delete this task?</Text>
-                        <View style={{ flexDirection: "row", justifyContent: "space-around", alignItems: "center", width: "100%", marginTop: 20 }}>
-                            <TouchableOpacity onPress={handleModalCancel}>
-                                <Text style={styles.modalCancelBtn}>Cancel</Text>
-                            </TouchableOpacity>
-                            <TouchableOpacity onPress={handleModalClose}>
-                                <Text style={styles.modalBtn}>Delete</Text>
-                            </TouchableOpacity>
-                        </View>
-                    </View>
-                </View>
-            </Modal>
+            <ConfirmModal
+                visible={modalVisible}
+                type={modalType}
+                message={modalMessage}
+                showConfirm={selectedTask !== null}
+                onConfirm={selectedTask ? handleOnConfirmDelete : null}
+                onClose={handleModalClose}
+            />
         </View>
     )
 }
@@ -243,5 +251,9 @@ const styles = StyleSheet.create({
         color: "white",
         fontWeight: "bold",
         textAlign: "center",
+    },
+    completed: {
+        textDecorationLine: "line-through",
+        color: "#555"
     }
 });
