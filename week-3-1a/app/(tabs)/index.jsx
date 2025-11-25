@@ -2,35 +2,23 @@ import { router } from "expo-router";
 import { TouchableOpacity, Text, View, StyleSheet } from "react-native";
 import TaskManager from "../../components/TaskManager";
 import { useEffect, useState } from "react";
-import { onAuthStateChanged } from "firebase/auth";
-import {auth} from "../../firebase"
+import { auth } from "../../firebase";
+import {onAuthStateChanged} from 'firebase/auth'
+import { useAuth } from "../../context/AuthContext";
 
 export default function Home() {
-  const [userEmail, setUserEmail] = useState("")
-  const [loading, setLoading] = useState(false)
+  const { user, setUser, logout, loading } = useAuth();
 
-  useEffect(() =>{
-    setLoading(true)
-    const userState = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setUserEmail(user.email)
-      } else {
-        router.replace("/login");
-      }
-      setLoading(false)
-    })
-
-    return () => userState();
-  }, [])
-  
-  if (loading) {
-    <View style={styles.container}>
-    <Text style={styles.welcome}>Loading...</Text>
-    </View>
+  if (loading || !user) {
+    return (
+      <View style={styles.container}>
+        <Text style={styles.welcome}>Loading...</Text>
+      </View>
+    )
   }
   return (
     <View style={styles.container}>
-      <Text style={styles.welcome}>Welcome, {userEmail || 'User'}</Text>
+      <Text style={styles.welcome}>Welcome {user.email || "User"}</Text>
       <TaskManager />
 
       <TouchableOpacity
@@ -58,3 +46,4 @@ container: { flex: 1, padding: 20, justifyContent: "center", alignItems: "center
   },
   addTaskText: { color: "white", fontWeight: "bold" },
 });
+

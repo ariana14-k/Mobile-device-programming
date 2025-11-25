@@ -1,8 +1,9 @@
 import { StyleSheet, Text, View, TextInput, TouchableOpacity } from 'react-native'
 import React, { useState } from 'react'
 import { signInWithEmailAndPassword } from 'firebase/auth';
-import {auth} from '../../firebase'
+import {auth, db} from '../../firebase'
 import { router } from 'expo-router';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 
 const login = () => {
     const [email, setEmail] = useState("")
@@ -30,7 +31,20 @@ const login = () => {
         if (!validateInputs()) return;
         setLoading(true)
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            const userData = await signInWithEmailAndPassword(auth, email, password);
+            if (userData) {
+                const userRef = doc(db, "users", userData.user.uid)
+                const snapData = await getDoc(userRef);
+
+                if (!snapData.exists()) {
+                    await setDoc(userRef, {
+                        email: userData.user.email,
+                        id: userData.user.uid,
+                        createdAt: new Date(),
+                        image: null
+                    })
+                }
+            }
             setLoading(false);
             router.push("/")
         } catch (error) {

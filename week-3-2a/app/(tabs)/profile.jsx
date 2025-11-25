@@ -1,70 +1,157 @@
-import { StyleSheet, Text, View } from 'react-native'
+import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Image } from 'react-native'
 import React, { useEffect, useState } from 'react'
-import { TouchableOpacity } from 'react-native'
-import { Feather } from "@expo/vector-icons"
-import { auth } from "../../firebase"
-import {router} from 'expo-router'
-import { ActivityIndicator } from 'react-native'
-import {signOut} from "firebase/auth"
+import { onAuthStateChanged, signOut } from 'firebase/auth'
+import { Feather } from '@expo/vector-icons'
+import { auth } from '../../firebase'
+import { router } from "expo-router";
+import { getDoc, doc, updateDoc } from 'firebase/firestore'
+import { db } from '../../firebase'
+import * as ImagePicker from 'expo-image-picker';
+import { useAuth } from '../../context/AuthContext';
+import ConfirmModal from '../../components/ConfirmModal'
 
-const profile = () => {
-  const [currentUser, setCurrentUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+const Profile = () => {
+  const { user, loading, logout, setUser } = useAuth();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalType, setModalType] = useState("");
+  const [modalMessage, setModalMessage] = useState("");
 
-  useEffect(() => {
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setCurrentUser(user)
-        setLoading(false)
-      } else {
-        setLoading(false)
-        router.replace("/login")
-      }
-    })
-
-    return () => unsubscribe()
-  }, [])
-
-  const handleSignOut = async () => {
-    try {
-      await signOut(auth)
-      router.replace("/login")
-      
-    } catch (error) {
-      console.log(error)
-    }
+  const showModal = (type, message) => {
+    setModalType(type);
+    setModalMessage(message);
+    setModalVisible(true);
   }
 
-  if (loading) {
+  const handleModalClose = () => {
+    setModalVisible(false);
+    router.push("/");
+
+  }
+
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== 'granted') {
+      showModal("error", "Permission to access media library is required!");
+      return;
+    }
+
+    let results = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      base64: true,
+      quality: 0.5,
+    });
+
+    if (!results.canceled) {
+      const base64Img = `data:image/jpg;base64,${results.assets[0].base64}`;
+      const userRef = doc(db, "users", user.id);
+
+      try {
+        await updateDoc(userRef, { image: base64Img });
+        setUser(prev => ({ ...prev, image: base64Img }));
+        showModal("success", "Image uploaded successfully!");
+      } catch (error) {
+        console.log(error);
+        showModal("error", "Failed to update image. Please try again.");
+      }
+    }
+  };
+
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (status !== 'granted') {
+      showModal("error", "Permission to access camera is required!");
+      return;
+    }
+
+    let results = await ImagePicker.launchCameraAsync({
+      mediaTypes: ["images"],
+      allowsEditing: true,
+      aspect: [1, 1],
+      base64: true,
+      quality: 0.5,
+    });
+
+    if (!results.canceled) {
+      const base64Img = `data:image/jpg;base64,${results.assets[0].base64}`;
+      const userRef = doc(db, "users", user.id);
+
+      try {
+        await updateDoc(userRef, { image: base64Img });
+        setUser(prev => ({ ...prev, image: base64Img }));
+        showModal("success", "Image uploaded successfully!");
+      } catch (error) {
+        console.log(error);
+        showModal("error", "Failed to update image. Please try again.");
+      }
+    }
+  };
+
+  if (!user) {
     return (
       <View style={styles.container}>
-        <ActivityIndicator size="large" color="#007aff"/>
-        <Text style={styles.title}>Loading user info....</Text>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.loadingText}>Loading user info...</Text>
       </View>
     )
   }
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Profile</Text>
+
+      {user.image ? (
+        <Image
+          source={{ uri: user.image }}
+          style={{ width: 120, height: 120, borderRadius: 60, marginBottom: 20 }} />
+      ) : (
+        <View style={{
+          width: 120,
+          height: 120,
+          borderRadius: 60,
+          backgroundColor: "#ddd",
+          justifyContent: "center",
+          alignItems: "center",
+          marginBottom: 20,
+        }}>
+          <Text>No image</Text>
+        </View>
+
+      )}
+
+      <TouchableOpacity style={styles.btn} onPress={pickImage}>
+        <Text style={styles.btnText}>Pick Image</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.btn, { backgroundColor: "#34C759" }]} onPress={takePhoto}>
+        <Text style={styles.btnText}>Take Photo</Text>
+      </TouchableOpacity>
+
       <View style={styles.card}>
         <Text style={styles.label}>Email</Text>
-        <Text style={styles.value}>{currentUser.email}</Text>
+
+        <Text style={styles.value}>{user.email}</Text>
 
         <Text style={styles.label}>User ID</Text>
-        <Text style={styles.value}>{currentUser.uid}</Text>
+        <Text style={styles.value}>{user.id}</Text>
       </View>
 
-      <TouchableOpacity onPress={handleSignOut}>
-        <View style={styles.logoutBtn}>
-          <Feather name="log-out" size={20} color="#fff" />
-          <Text style={styles.logoutText}>Sign Out</Text>
-        </View>
+      <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
+        <Feather name="log-out" size={22} color="#fff" />
+        <Text style={styles.logoutText}>Log Out</Text>
       </TouchableOpacity>
+      <ConfirmModal
+        visible={modalVisible}
+        message={modalMessage}
+        onClose={handleModalClose}
+        type={modalType}
+      />
     </View>
-  )
+  );
 }
-
-export default profile
 
 const styles = StyleSheet.create({
   container: {
@@ -125,4 +212,18 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginLeft: 8,
   },
-})
+  btn: {
+    backgroundColor: "#007AFF",
+    padding: 10,
+    borderRadius: 8,
+    marginBottom: 12,
+    width: 150,
+    alignItems: "center"
+  },
+  btnText: {
+    color: "white",
+    fontWeight: "600"
+  },
+});
+
+export default Profile;

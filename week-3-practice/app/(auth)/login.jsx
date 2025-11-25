@@ -1,15 +1,10 @@
-import { StyleSheet, Text, View, TextInput, TouchableOpacity } from 'react-native';
-import React, { useState, useEffect } from 'react';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithCredential } from 'firebase/auth';
-import { auth } from '../../firebase';
+import { StyleSheet, Text, View, TextInput, TouchableOpacity, Platform } from 'react-native';
+import React, { useState } from 'react';
+import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
+import { auth, db } from '../../firebase';
 import { router } from 'expo-router';
 import { AntDesign } from '@expo/vector-icons';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import * as AuthSession from 'expo-auth-session';
-
-WebBrowser.maybeCompleteAuthSession();
-console.log(AuthSession.makeRedirectUri({ useProxy: true }));
+import { doc, getDoc, setDoc } from "firebase/firestore";
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -17,21 +12,30 @@ const Login = () => {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const [request, response, promptAsync] = Google.useAuthRequest({
-    expoClientId: "535939075835-rndv56decogb8rhva5as7blm7khsf2bt.apps.googleusercontent.com",
-    webClientId: "535939075835-rndv56decogb8rhva5as7blm7khsf2bt.apps.googleusercontent.com",
-    iosClientId: "535939075835-4or6faovf7ql21pslojv93bh49dgcjee.apps.googleusercontent.com",
-    });
+  const handleGoogleWebLogin = async () => {
+    try {
+      const provider = new GoogleAuthProvider();
 
-  useEffect(() => {
-    if (response?.type === "success") {
-      const { id_token } = response.params;
-      const credential = GoogleAuthProvider.credential(id_token);
-      signInWithCredential(auth, credential)
-        .then(() => router.push("/"))
-        .catch((err) => setError(err.message));
+      const result = await signInWithPopup(auth, provider);
+      const user = result.user;
+
+      const userRef = doc(db, "users", user.uid);
+      const docSnap = await getDoc(userRef);
+
+      if (!docSnap.exists()) {
+        await setDoc(userRef, {
+          id: userCredential.user.uid,
+          email: user.email,
+          image: null,
+          createdAt: Date.now(),
+        });
+      }
+
+      router.push("/");
+    } catch (err) {
+      setError(err.message);
     }
-  }, [response]);
+  };
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -39,8 +43,23 @@ const Login = () => {
       return;
     }
     setLoading(true);
+
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      if (userCredential.user) {
+        const userRef = doc(db, "users", userCredential.user.uid);
+        const docSnap = await getDoc(userRef);
+
+        if (!docSnap.exists()) {
+          await setDoc(userRef, {
+            email: userCredential.user.email,
+            id: userCredential.user.uid,
+            createdAt: Date.now(),
+            image: null
+          })
+        }
+      }
+
       router.push("/");
     } catch (error) {
       if (error.code === "auth/invalid-credential") {
@@ -64,6 +83,7 @@ const Login = () => {
         autoCapitalize="none"
         style={styles.input}
       />
+
       <TextInput
         placeholder="Password"
         value={password}
@@ -77,14 +97,15 @@ const Login = () => {
       <TouchableOpacity style={styles.btn} onPress={handleLogin}>
         <Text style={styles.btnText}>{loading ? 'Logging in...' : 'Login'}</Text>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.btn, { backgroundColor: '#DB4437', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }]}
-        disabled={!request}
-        onPress={() => promptAsync()}
-      >
-        <AntDesign name="google" size={20} color="white" />
-        <Text style={[styles.btnText, { marginLeft: 8 }]}>Sign in with Google</Text>
-      </TouchableOpacity>
+      {Platform.OS === "web" && (
+        <TouchableOpacity
+          style={[styles.btn, { backgroundColor: '#DB4437', flexDirection: 'row', justifyContent: 'center', alignItems: 'center' }]}
+          onPress={handleGoogleWebLogin}
+        >
+          <AntDesign name="google" size={20} color="white" />
+          <Text style={[styles.btnText, { marginLeft: 8 }]}>Sign in with Google</Text>
+        </TouchableOpacity>
+      )}
 
       <TouchableOpacity onPress={() => router.push("/register")}>
         <Text style={styles.link}>Don't have an account? Sign Up</Text>

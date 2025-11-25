@@ -1,64 +1,135 @@
 import { StyleSheet, Text, View, TouchableOpacity, ActivityIndicator } from 'react-native'
 import React, { useState, useEffect } from 'react'
-import {router} from 'expo-router'
-import {Feather} from "@expo/vector-icons"
-import {auth} from "../../firebase"
+import { router } from 'expo-router'
+import { Feather } from "@expo/vector-icons"
+import { auth, db } from "../../firebase"
 import { signOut } from 'firebase/auth'
+import { useAuth } from '../../context/AuthContext'
+import * as ImagePicker from 'expo-image-picker';
+import ConfirmModal from '../../components/ConfirmModal'
+import { doc, updateDoc } from 'firebase/firestore'
+import { Image } from 'react-native'
 
 const profile = () => {
   const [currentUser, setCurrentUser] = useState(null)
-  const [loading, setLoading] = useState(true)
+  const { user, logout, loading, setUser } = useAuth();
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalType, setModalType] = useState("")
+  const [modalMessage, setModalMessage] = useState("")
 
-  useEffect(() =>{
-  
-      const unsubscribe = auth.onAuthStateChanged((user) => {
-        if (user) {
-          setCurrentUser(user)
-          setLoading(false)
-        } else {
-          router.replace("/login");
-        }
-      })
-  
-      return () => unsubscribe()
-  
-    }, [])
+  const showModal = (type, message) => {
+    setModalType(type);
+    setModalMessage(message);
+    setModalVisible(true);
+  }
 
-  const handleSignOut = async () => {
-    try {
-        await signOut(auth);
-        router.replace("/login")
-    } catch (error) {
-      console.log(error)
+  const pickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (status !== "granted") {
+      showModal("error", "Permission to access media library is required!")
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: "images",
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true
+    })
+
+    if (!result.canceled) {
+      const base64Img = `data:image/jpg;base64,${result.assets[0].base64}`;
+      const userRef = doc(db, "users", user.id);
+      try {
+        await updateDoc(userRef, { image: base64Img });
+        setUser(prev => ({ ...prev, image: base64Img }));
+        showModal("success", "Profile image updated successfully!")
+      } catch (error) {
+        showModal("error", "Image cannot be updated. Please try again!")
+      }
     }
   }
 
-  if (loading) {
-      return (
-        <View style={styles.container}>
-          <ActivityIndicator size="large" color="#007AFF"/>
-        <Text style={styles.welcome}>Loading user info...</Text>
-        </View>
-      )
+  const takePhoto = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+
+    if (status !== "granted") {
+      showModal("error", "Permission to access camera is required!")
     }
+
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: "images",
+      allowsEditing: false,
+      aspect: [1, 1],
+      quality: 0.5,
+      base64: true
+    })
+
+    if (!result.canceled) {
+      const base64Img = `data:image/jpg;base64,${result.assets[0].base64}`;
+      const userRef = doc(db, "users", user.id);
+      try {
+        await updateDoc(userRef, { image: base64Img });
+        setUser(prev => ({ ...prev, image: base64Img }));
+        showModal("success", "Profile image uploaded successfully!")
+      } catch (error) {
+        showModal("error", "Image cannot be uploaded. Please try again!")
+      }
+    }
+  }
+
+  const handleModalClose = () => {
+    setModalVisible(false);
+  }
+
+  if (loading || !user) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#007AFF" />
+        <Text style={styles.welcome}>Loading user info...</Text>
+      </View>
+    )
+  }
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Profile</Text>
+
+      {user.image ? (
+        <Image style={{width: 120, height: 120, borderRadius: 60, marginBottom: 20}} source={{ uri: user.image }} />
+      ) : (
+        <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: "#E5E7EB", justifyContent: "center", alignItems: "center", marginBottom: 20 }}>
+          <Text>No image</Text>
+        </View>
+      )}
+      <TouchableOpacity style={styles.btn} onPress={pickImage}>
+        <Text style={styles.btnText}>Pick Image</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity style={[styles.btn, {backgroundColor: "gray"}]} onPress={takePhoto}>
+        <Text style={styles.btnText}>Take Photo</Text>
+      </TouchableOpacity>
       <View style={styles.card}>
         <Text style={styles.label}>Email</Text>
-        <Text style={styles.value}>{currentUser.email}</Text>
+        <Text style={styles.value}>{user.email}</Text>
 
         <Text style={styles.label}>User ID</Text>
-        <Text style={styles.value}>{currentUser.uid}</Text>
+        <Text style={styles.value}>{user.id}</Text>
       </View>
-      
-      <TouchableOpacity onPress={handleSignOut}>
+
+      <TouchableOpacity onPress={logout}>
         <View style={styles.logoutBtn}>
           <Feather name="log-out" size={20} color="#fff" />
           <Text style={styles.logoutText}>Sign out</Text>
         </View>
       </TouchableOpacity>
+      <ConfirmModal
+        visible={modalVisible}
+        type={modalType}
+        message={modalMessage}
+        onClose={handleModalClose}
+      />
     </View>
   )
 }
@@ -124,4 +195,16 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginLeft: 8,
   },
+  btn: {
+    width: 150,
+    borderRadius: 12,
+    padding: 10,
+    backgroundColor: "#007AFF",
+    marginBottom: 20,
+  },
+  btnText: {
+    color: "white",
+    fontWeight: "600",
+    textAlign: "center",
+  }
 });

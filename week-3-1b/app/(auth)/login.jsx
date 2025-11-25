@@ -1,25 +1,25 @@
-import { StyleSheet, Text, View, TouchableOpacity, TextInput } from 'react-native'
+import { StyleSheet, Text, View, TextInput, TouchableOpacity } from 'react-native'
 import React, { useState } from 'react'
-import {router} from 'expo-router'
-import {signInWithEmailAndPassword} from 'firebase/auth'
-import {auth} from "../../firebase"
+import {router} from "expo-router"
+import { signInWithEmailAndPassword } from 'firebase/auth'
+import {auth, db} from "../../firebase"
+import { doc, setDoc, getDoc } from 'firebase/firestore'
 
 const login = () => {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [error, setError] = useState("")
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(false)
 
     const validateInputs = () => {
         if (email.trim() === "" || password.trim() === "") {
-            setError("Both fields are required");
+            setError("Both fields are required")
             return false;
         }
 
         const emailRegex = /^[^@\s]+@[^@\s]+\.[^@\s]+$/;
-
         if (!emailRegex.test(email)) {
-            setError("Email is not valid");
+            setError("Email is not valid")
             return false;
         }
 
@@ -27,59 +27,72 @@ const login = () => {
         return true;
     }
 
-    const handleLogin = async () => {
+   const handleLogin = async () => {
         if (!validateInputs()) return;
+
         setLoading(true)
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            const userData = await signInWithEmailAndPassword(auth, email, password)
+
+            if (userData) {
+                const userRef = doc(db, "users", userData.user.uid)
+                const snapData = await getDoc(userRef);
+                if (!snapData.exists()) {
+                    await setDoc(userRef, {
+                        email: userData.user.email,
+                        id: userData.user.uid,
+                        image: null,
+                        createdAt: new Date(),
+                    })
+                }
+            }
             setLoading(false)
             router.replace("/")
-            
         } catch (error) {
             if (error.code === "auth/invalid-credential") {
-                setError("Incorrect email or password")
+                setError("Incorrect password or email")
             } else {
                 setError(error.message)
             }
-            setLoading(false)
 
+            setLoading(false)
         }
     }
 
-  return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Log In</Text>
-      <TextInput
-        placeholder='Email'
-        value={email}
-        onChangeText={setEmail}
-        autoCapitalize='none'
-        style={styles.input}
-      />
+    return (
+        <View style={styles.container}>
+            <Text style={styles.title}>Log In</Text>
+            <TextInput
+                placeholder='Email'
+                value={email}
+                onChangeText={setEmail}
+                style={styles.input}
+                autoCapitalize='none'
+            />
+            <TextInput
+                placeholder='Password'
+                value={password}
+                onChangeText={setPassword}
+                style={styles.input}
+                secureTextEntry
+            />
 
-      <TextInput 
-      placeholder='Password'
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-        style={styles.input}
-      />
+            {error ? <Text style={styles.error}>{error}</Text> : null}
+            <TouchableOpacity style={styles.btn} onPress={handleLogin}>
+                <Text style={styles.btnText}>{loading ? "Logging in" : "Log In"}</Text>
+            </TouchableOpacity>
 
-       {error ? <Text style={styles.error}>{error}</Text> : null}
-      <TouchableOpacity style={styles.btn} onPress={handleLogin}>
-        <Text style={styles.btnText}>{loading ? "Logging in..." : "Log In"}</Text>
-      </TouchableOpacity>
-      <TouchableOpacity onPress={() => router.push("/register")}>
-        <Text style={styles.link}>Don't have an account? Sign Up</Text>
-      </TouchableOpacity>
-    </View>
-  )
+            <TouchableOpacity onPress={() => router.push("/register")}>
+                <Text style={styles.link}>Don't have an account? Sign Up</Text>
+            </TouchableOpacity>
+        </View>
+    )
 }
 
 export default login
 
 const styles = StyleSheet.create({
-     container: { flex: 1, justifyContent: "center", padding: 20 },
+    container: { flex: 1, justifyContent: "center", padding: 20 },
     title: { fontSize: 26, fontWeight: "bold", marginBottom: 25, textAlign: "center" },
     input: {
         borderWidth: 1,

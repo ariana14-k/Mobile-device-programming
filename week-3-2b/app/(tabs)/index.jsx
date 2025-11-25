@@ -4,27 +4,12 @@ import TaskManager from "../../components/TaskManager";
 import { useEffect, useState } from "react";
 import {auth} from "../../firebase"
 import { onAuthStateChanged } from "firebase/auth";
+import { useAuth } from "../../context/AuthContext";
 
 export default function Home() {
-  const [userEmail, setUserEmail] = useState("")
-  const [loading, setLoading] = useState(true)
+  const {user, loading} = useAuth();
 
-  useEffect(() =>{
-
-    const unsubscribe = auth.onAuthStateChanged((user) => {
-      if (user) {
-        setUserEmail(user.email)
-        setLoading(false)
-      } else {
-        router.replace("/login");
-      }
-    })
-
-    return () => unsubscribe()
-
-  }, [])
-
-  if (loading) {
+  if (loading || !user) {
     return (
       <View style={styles.container}>
       <Text style={styles.welcome}>Loading...</Text>
@@ -33,7 +18,7 @@ export default function Home() {
   }
   return (
     <View style={styles.container}>
-      <Text style={styles.welcome}>Welcome {userEmail || "User"}</Text>
+      <Text style={styles.welcome}>Welcome {user.email || "User"}</Text>
       <TaskManager />
 
       <TouchableOpacity

@@ -14,13 +14,13 @@ export default function TaskManager() {
     const [modalType, setModalType] = useState("")
     const [modalMessage, setModalMessage] = useState("")
   const [selectedTask, setSelectedTask] = useState(null)
-  const {user} = useAuth();
+  const {user, loading: authLoading, setUser, logout} = useAuth();
 
   useEffect(() => {
       if (!user) return;
       setLoading(true);
 
-      const tasksRef = collection(db, "users", user.uid, "tasks");
+      const tasksRef = collection(db, "users", user.id, "tasks");
 
       const tasksQuery = query(tasksRef, orderBy("createdAt", "desc"));
 

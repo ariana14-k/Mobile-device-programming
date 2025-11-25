@@ -2,7 +2,8 @@ import { StyleSheet, Text, View, TextInput, TouchableOpacity } from 'react-nativ
 import React, { useState } from 'react'
 import {router} from "expo-router"
 import { signInWithEmailAndPassword } from 'firebase/auth'
-import {auth} from "../../firebase"
+import {auth, db} from "../../firebase"
+import { doc, setDoc, getDoc } from 'firebase/firestore'
 
 const login = () => {
     const [email, setEmail] = useState("")
@@ -29,18 +30,33 @@ const login = () => {
     const handleLogin = async () => {
         if (!validateInputs()) return;
 
-        setLoading(true);
+        setLoading(true)
         try {
-            await signInWithEmailAndPassword(auth, email, password);
+            const userData = await signInWithEmailAndPassword(auth, email, password)
+
+            if (userData) {
+                const userRef = doc(db, "users", userData.user.uid)
+                const snapData = await getDoc(userRef);
+                if (!snapData.exists()) {
+                    await setDoc(userRef, {
+                        email: userData.user.email,
+                        id: userData.user.uid,
+                        image: null,
+                        createdAt: new Date(),
+                    })
+                }
+            }
+            setLoading(false)
             router.replace("/")
         } catch (error) {
             if (error.code === "auth/invalid-credential") {
-                setError("Incorrect email or password")
+                setError("Incorrect password or email")
             } else {
                 setError(error.message)
             }
-        }
 
+            setLoading(false)
+        }
     }
 
     return (

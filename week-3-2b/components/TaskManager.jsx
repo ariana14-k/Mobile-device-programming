@@ -13,13 +13,13 @@ export default function TaskManager() {
     const [modalMessage, setModalMessage] = useState("")
     const [selectedTask, setSelectedTask] = useState(null);
     const [loading, setLoading] = useState(false);
-    const { user } = useAuth();
+    const { user, loading: authLoading } = useAuth();
 
     useEffect(() => {
         if (!user) return;
         setLoading(true)
-
-        const tasksRef = collection(db, "users", user.uid, "tasks")
+console.log("user", user)
+        const tasksRef = collection(db, "users", user.id, "tasks")
 
         const tasksQuery = query(tasksRef, orderBy("createdAt", "desc"));
 
@@ -107,6 +107,10 @@ export default function TaskManager() {
     const handleModalClose = () => {
         setModalVisible(false);
         setSelectedTask(null)
+    }
+
+    if (authLoading || !user) {
+        return null
     }
 
     return (
