@@ -5,6 +5,7 @@ import { getDoc, doc, updateDoc } from "firebase/firestore";
 import { db } from "../../firebase";
 import { useAuth } from "../../context/AuthContext";
 import ConfirmModal from "../../components/ConfirmModal";
+import * as Notifications from "expo-notifications"
 
 export default function TaskDetail() {
   const { id } = useLocalSearchParams();
@@ -14,6 +15,7 @@ export default function TaskDetail() {
    const [modalVisible, setModalVisible] = useState(false)
     const [modalType, setModalType] = useState("")
     const [modalMessage, setModalMessage] = useState("")
+    const [notificationId, setNotificationId] = useState("")
   const { user } = useAuth();
 
   useEffect(() => {
@@ -23,7 +25,7 @@ export default function TaskDetail() {
   const loadData = async () => {
     if (user) {
       try {
-        const ref = doc(db, "users", user.uid, "tasks", id)
+        const ref = doc(db, "users", user.id, "tasks", id)
         const getData = await getDoc(ref);
         if (getData.exists()) {
           const fetchedData = getData.data();
@@ -52,7 +54,7 @@ export default function TaskDetail() {
 
     const updatedTask = {...task, title: newTitle};
     try {
-      const ref = doc(db, "users", user.uid, "tasks", id);
+      const ref = doc(db, "users", user.id, "tasks", id);
       await updateDoc(ref, updatedTask);
       setModalMessage("Task title updated successfully!");
       setModalVisible(true);
@@ -68,7 +70,7 @@ export default function TaskDetail() {
     const updatedTask = {...task, completed: !task.completed}
 
     try {
-      const ref = doc(db, "users", user.uid, "tasks", id);
+      const ref = doc(db, "users", user.id, "tasks", id);
       await updateDoc(ref, updatedTask);
       setModalMessage(updatedTask.completed ? "Task marked as complete" : "Task marked as incomplete");
       setTask(updatedTask);
@@ -77,6 +79,44 @@ export default function TaskDetail() {
     } catch (error) {
       console.log("error: ", error)
     }
+  }
+
+  const setReminder = async () => {
+    const notifId = await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Task Reminder",
+        body:  `Reminder for task ${task.title}`,
+        sound: true,
+        data: {
+          taskId: id
+        }
+      },
+      trigger: {
+        seconds: 5,
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL
+      }
+    })
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: "Question",
+        body:  `Do you want to complete ${task.title}?`,
+        sound: true,
+        categoryIdentifier: 'taskCategory',
+        data: {
+          taskId: id
+        }
+      },
+      trigger: {
+        seconds: 10,
+        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL
+      }
+    })
+    setNotificationId(notifId)
+  }
+
+  const cancelNotification = async () => {
+    await Notifications.cancelScheduledNotificationAsync(notificationId)
   }
 
   if (loading) {
@@ -117,6 +157,30 @@ export default function TaskDetail() {
          >
            <Text style={styles.toggleText}>
              {task.completed ? "Completed" : "Mark as Completed"}
+           </Text>
+         </TouchableOpacity>
+
+         <TouchableOpacity
+           style={[
+             styles.toggleBtn,
+             { backgroundColor: "blue" },
+           ]}
+           onPress={setReminder}
+         >
+           <Text style={styles.toggleText}>
+             Set Reminder
+           </Text>
+         </TouchableOpacity>
+
+         <TouchableOpacity
+           style={[
+             styles.toggleBtn,
+             { backgroundColor: "red" },
+           ]}
+           onPress={cancelNotification}
+         >
+           <Text style={styles.toggleText}>
+             Cancel Notification
            </Text>
          </TouchableOpacity>
    

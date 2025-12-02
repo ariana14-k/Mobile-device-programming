@@ -47,6 +47,13 @@ export default function NavLayout() {
               tabBarIcon: ({ color }) => <NavIcon name="user" color={color} />,
             }}
           />
+          <Tabs.Screen
+            name="notifications"
+            options={{
+              title: "Notifications",
+              tabBarIcon: ({ color }) => <NavIcon name="bell" color={color} />,
+            }}
+          />
         </Tabs>
       );
 

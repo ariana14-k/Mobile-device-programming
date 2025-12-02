@@ -5,6 +5,7 @@ import {addDoc, collection} from "firebase/firestore"
 import {db} from "../firebase"
 import { useAuth } from "../context/AuthContext";
 import ConfirmModal from "../components/ConfirmModal";
+import * as Notifications from "expo-notifications";
 
 export default function AddTask() {
     const [task, setTask] = useState("");
@@ -30,11 +31,23 @@ export default function AddTask() {
         const newTask = { title: task, completed: false, createdAt: new Date() };
 
         try {
-            await addDoc(collection(db, "users", user.uid, "tasks"), newTask);
+            await addDoc(collection(db, "users", user.id, "tasks"), newTask);
             setTask("");
             setModalVisible(true);
             setModalType("success");
             setModalMessage("Task created successfully!")
+
+            await Notifications.scheduleNotificationAsync({
+                content: {
+                    title: "New Task added!",
+                    body:  `Task ${newTask.title} has been added successfully!`,
+                    sound: true,
+                },
+                trigger: {
+                    seconds: 5,
+                    type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL
+                }
+            })
         } catch (error) {
             console.log("Error adding task:", error);
         }

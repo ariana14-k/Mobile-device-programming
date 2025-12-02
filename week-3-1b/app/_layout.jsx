@@ -2,8 +2,55 @@ import { Stack } from "expo-router";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar, StyleSheet } from "react-native";
 import { AuthProvider } from "../context/AuthContext";
+import { useEffect } from "react";
+import { registerForPushNotificationsAsync } from "../notifications";
+import * as Notifications from "expo-notifications"
+import {router} from "expo-router"
+
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 export default function RootLayout() {
+  useEffect(() => {
+      registerForPushNotificationsAsync();
+
+      const subscription = Notifications.addNotificationResponseReceivedListener(
+      (response) => {
+        const data = response.notification.request.content.data;
+        const actionId = response.actionIdentifier;
+        if (data?.taskId) {
+          router.push(`/task/${data.taskId}`);
+        }
+        if (actionId === "accept") {
+          router.push(`/task/${data.taskId}`);
+        }
+        if (actionId === "deny") {
+          router.push(`(tabs)/`);
+        }
+      }
+    );
+    // Define category with action buttons
+    Notifications.setNotificationCategoryAsync("taskCategory", [
+      {
+        identifier: "accept",
+        buttonTitle: "Accept",
+      },
+      {
+        identifier: "deny",
+        buttonTitle: "Deny",
+        options: { isDestructive: true },
+      },
+    ]);
+
+    return () => subscription.remove();
+
+  }, [])
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="white" />

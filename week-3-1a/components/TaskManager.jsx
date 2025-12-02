@@ -50,7 +50,7 @@ export default function TaskManager() {
 
   const handleOnConfirmDelete = async () => {
      try {
-      await deleteDoc(doc(db, "users", user.uid, "tasks", selectedTask.id));
+      await deleteDoc(doc(db, "users", user.id, "tasks", selectedTask.id));
       setModalType("success");
       setModalMessage("Task deleted successfully");
       setModalVisible(false);

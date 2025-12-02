@@ -1,10 +1,11 @@
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, TextInput } from "react-native";
 import { Link, router } from "expo-router";
 import { useState } from "react";
 import { addDoc, collection } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import ConfirmModal from "../components/ConfirmModal";
+import * as Notifications from "expo-notifications";
 
 export default function AddTask() {
   const [task, setTask] = useState("");
@@ -13,7 +14,7 @@ export default function AddTask() {
   const [modalType, setModalType] = useState("");
   const [modalMessage, setModalMessage] = useState("");
 
-  const {user} = useAuth();
+  const { user } = useAuth();
 
   const addTask = async () => {
     if (task.trim() === "") {
@@ -29,19 +30,34 @@ export default function AddTask() {
     const newTask = { title: task, completed: false, createdAt: new Date() };
 
     try {
-      await addDoc(collection(db, "users", user.uid, "tasks"), newTask);
+      const taskRef = await addDoc(collection(db, "users", user.id, "tasks"), newTask);
       setTask("");
-      setModalVisible(true); 
-      setModalType("success")
+      setModalVisible(true);
+      setModalType("success");
       setModalMessage("Task created successfully!");
+
+      const notificationId = await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "New Task Added! 🎉",
+          body: `Task "${newTask.title}" created successfully!`,
+          sound: true,
+          priority: Notifications.AndroidImportance.HIGH,
+          data: {
+            taskId: taskRef.id,
+          },
+        },
+        trigger: null,
+      });
     } catch (e) {
-      console.log("Error saving task:", e);
+      setModalType("error");
+      setModalMessage("Failed to add task");
+      setModalVisible(true);
     }
   };
 
   const handleCloseModal = () => {
     setModalVisible(false);
-    router.push("/"); 
+    router.push("/");
   };
 
   return (
@@ -110,30 +126,5 @@ const styles = StyleSheet.create({
   btnText: {
     color: "white",
     fontWeight: "bold",
-  },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)", 
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  modalBox: {
-    backgroundColor: "white",
-    width: "80%",
-    padding: 20,
-    borderRadius: 10,
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-    minHeight: 180
-  },
-  modalBtn: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 8,
-    paddingHorizontal: 24,
-    borderRadius: 6,
   },
 });
