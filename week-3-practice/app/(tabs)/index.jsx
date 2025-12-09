@@ -1,13 +1,22 @@
 import { router } from "expo-router";
 import { TouchableOpacity, Text, View, StyleSheet } from "react-native";
 import TaskManager from "../../components/TaskManager";
-import { useEffect, useState } from "react";
-import { auth } from "../../firebase";
-import {onAuthStateChanged} from 'firebase/auth'
 import { useAuth } from "../../context/AuthContext";
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue } from "react-native-reanimated";
+import { useCallback } from "react";
 
 export default function Home() {
-  const { user, setUser, logout, loading } = useAuth();
+  const { user, loading } = useAuth();
+
+  const scale = useSharedValue(1);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+
+  const handleAddTask = useCallback(() => {
+    router.push("/add-task");
+  }, []);
 
   if (loading || !user) {
     return (
@@ -16,25 +25,45 @@ export default function Home() {
       </View>
     )
   }
+
   return (
     <View style={styles.container}>
-      <Text style={styles.welcome}>Welcome {user.email || "User"}</Text>
+      <Animated.Text
+        entering={FadeIn.duration(700)}
+        style={styles.welcome}
+      >
+        Welcome {user.email || "User"}
+      </Animated.Text>
       <TaskManager />
 
-      <TouchableOpacity
-        onPress={() => router.push("/add-task")}
+      {/* <TouchableOpacity
+        onPress={handleAddTask}
         style={styles.addTaskBtn}
+        activeOpacity={0.7}
       >
         <Text style={styles.addTaskText}>
           Add New Task
         </Text>
+      </TouchableOpacity> */}
+
+      <TouchableOpacity
+        onPressIn={() => (scale.value = 0.95)}
+        onPressOut={() => (scale.value = 1)}
+        onPress={handleAddTask}
+      >
+        <Animated.View style={[styles.addTaskBtn, animatedStyle]}>
+          <Text style={styles.addTaskText}>
+            Add New Task
+          </Text>
+        </Animated.View>
+
       </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-container: { flex: 1, padding: 20, justifyContent: "center", alignItems: "center" },
+  container: { flex: 1, padding: 20, justifyContent: "center", alignItems: "center" },
   welcome: { fontSize: 20, fontWeight: "bold", marginBottom: 20 },
   addTaskBtn: {
     backgroundColor: "#007AFF",

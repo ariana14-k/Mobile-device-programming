@@ -9,6 +9,7 @@ import { db } from '../../firebase'
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
 import ConfirmModal from '../../components/ConfirmModal'
+import Animated, {FadeIn, ZoomOut} from "react-native-reanimated"
 
 const Profile = () => {
   const { user, loading, logout, setUser } = useAuth();
@@ -104,7 +105,9 @@ const Profile = () => {
       <Text style={styles.title}>Profile</Text>
 
       {user.image ? (
-        <Image
+        <Animated.Image
+          entering={FadeIn.duration(600)}
+          exiting={ZoomOut.duration(500)}
           source={{ uri: user.image }}
           style={{ width: 120, height: 120, borderRadius: 60, marginBottom: 20 }} />
       ) : (
@@ -122,7 +125,7 @@ const Profile = () => {
 
       )}
 
-      <TouchableOpacity style={styles.btn} onPress={pickImage}>
+      <TouchableOpacity style={styles.btn} onPress={pickImage} activeOpacity={0.7}>
         <Text style={styles.btnText}>Pick Image</Text>
       </TouchableOpacity>
 

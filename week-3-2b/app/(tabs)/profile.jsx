@@ -9,6 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import ConfirmModal from '../../components/ConfirmModal'
 import { doc, updateDoc } from 'firebase/firestore'
 import { Image } from 'react-native'
+import Animated, { ZoomIn } from 'react-native-reanimated'
 
 const profile = () => {
   const [currentUser, setCurrentUser] = useState(null)
@@ -97,7 +98,7 @@ const profile = () => {
       <Text style={styles.title}>Profile</Text>
 
       {user.image ? (
-        <Image style={{width: 120, height: 120, borderRadius: 60, marginBottom: 20}} source={{ uri: user.image }} />
+        <Animated.Image entering={ZoomIn.duration(600)} style={{width: 120, height: 120, borderRadius: 60, marginBottom: 20}} source={{ uri: user.image }} />
       ) : (
         <View style={{ width: 120, height: 120, borderRadius: 60, backgroundColor: "#E5E7EB", justifyContent: "center", alignItems: "center", marginBottom: 20 }}>
           <Text>No image</Text>

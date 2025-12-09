@@ -38,7 +38,7 @@ export default function AddTask() {
 
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
-          title: "New Task Added! 🎉",
+          title: "New Task Added!",
           body: `Task "${newTask.title}" created successfully!`,
           sound: true,
           priority: Notifications.AndroidImportance.HIGH,
@@ -47,6 +47,15 @@ export default function AddTask() {
           },
         },
         trigger: null,
+      });
+
+      await addDoc(collection(db, "users", user.id, "notifications"), {
+        notificationId: notificationId,
+        taskId: taskRef.id,
+        taskTitle: task.title,
+        title: "New Task added!",
+        body: `Task ${newTask.title} has been added successfully!`,
+        scheduledAt: new Date(),
       });
     } catch (e) {
       setModalType("error");

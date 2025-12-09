@@ -1,10 +1,21 @@
 import { Link } from "expo-router";
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, Modal, ActivityIndicator } from 'react-native'
-import { useEffect, useState } from "react";
-import { collection, onSnapshot, query, orderBy, deleteDoc, doc} from "firebase/firestore";
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, ActivityIndicator } from 'react-native'
+import { memo, useCallback, useEffect, useState } from "react";
+import { collection, onSnapshot, query, orderBy, deleteDoc, doc } from "firebase/firestore";
 import { db } from "../firebase"
 import { useAuth } from "../context/AuthContext";
 import ConfirmModal from "./ConfirmModal";
+
+const TaskItem = memo(({ item, onDelete }) => (
+    <View style={styles.taskItem}>
+        <Link href={`/task/${item.id}`}>
+            <Text style={item.completed ? styles.completed : null}>{item.title}</Text>
+        </Link>
+        <TouchableOpacity onPress={() => onDelete(item)}>
+            <Text style={{ color: "red" }}>Delete</Text>
+        </TouchableOpacity>
+    </View>
+))
 
 export default function TaskManager() {
     const [tasks, setTasks] = useState([]);
@@ -18,7 +29,7 @@ export default function TaskManager() {
     useEffect(() => {
         if (!user) return;
         setLoading(true)
-console.log("user", user)
+
         const tasksRef = collection(db, "users", user.id, "tasks")
 
         const tasksQuery = query(tasksRef, orderBy("createdAt", "desc"));
@@ -39,12 +50,12 @@ console.log("user", user)
         return () => unsubscribe();
     }, [])
 
-    const deleteTask = (task) => {
+    const deleteTask = useCallback((task) => {
         setModalVisible(true);
         setModalType("error");
         setModalMessage(`Are you sure you want to delete "${task.title}"?`);
         setSelectedTask(task)
-    };
+    }, []);
 
     const handleOnConfirmDelete = async () => {
         try {
@@ -59,11 +70,11 @@ console.log("user", user)
         }
     }
 
-    const renderEmpty = () => (
+    const renderEmpty = useCallback(() => (
         <Text style={styles.emptyText}>No tasks yet. Add your first task!</Text>
-    );
+    ), []);
 
-    const renderHeader = () => (
+    const renderHeader = useCallback(() => (
         <View style={{ flex: 1 }}>
             <Text style={styles.listHeader}>Your Tasks</Text>
             {/* <TouchableOpacity onPress={fetchExternalAPI}>
@@ -72,7 +83,7 @@ console.log("user", user)
                 </View>
             </TouchableOpacity> */}
         </View>
-    );
+    ), []);
 
     const fetchExternalAPI = async () => {
         try {
@@ -96,18 +107,22 @@ console.log("user", user)
         }
     }
 
-    const renderFooter = () => (
+    const renderFooter = useCallback(() => (
         <Text style={styles.listFooter}>End of the list</Text>
-    );
+    ), []);
 
-    const renderSeparator = () => (
+    const renderSeparator = useCallback(() => (
         <View style={styles.separator} />
-    );
+    ), []);
 
     const handleModalClose = () => {
         setModalVisible(false);
         setSelectedTask(null)
     }
+
+    const renderItem = useCallback(({item}) => {
+        return <TaskItem item={item} onDelete={deleteTask}/>
+    }, [deleteTask])
 
     if (authLoading || !user) {
         return null
@@ -122,20 +137,13 @@ console.log("user", user)
                     style={styles.container}
                     data={tasks}
                     keyExtractor={(item) => item.id}
-                    renderItem={({ item }) => (
-                        <View style={styles.taskItem}>
-                            <Link href={`/task/${item.id}`}>
-                                <Text style={item.completed ? styles.completed : null}>{item.title}</Text>
-                            </Link>
-                            <TouchableOpacity onPress={() => deleteTask(item)}>
-                                <Text style={{ color: "red" }}>Delete</Text>
-                            </TouchableOpacity>
-                        </View>
-                    )}
+                    renderItem={renderItem}
                     ItemSeparatorComponent={renderSeparator}
                     ListEmptyComponent={renderEmpty}
                     ListHeaderComponent={renderHeader}
                     ListFooterComponent={renderFooter}
+                    initialNumToRender={6}
+                    maxToRenderPerBatch={10}
                 />
             )}
             <ConfirmModal

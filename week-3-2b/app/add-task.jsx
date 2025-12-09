@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal } from "react-native";
 import { Link, router } from "expo-router";
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import {addDoc, collection} from "firebase/firestore"
 import {db} from "../firebase"
 import { useAuth } from "../context/AuthContext";
@@ -16,7 +16,7 @@ export default function AddTask() {
 
     const {user} = useAuth();
 
-    const addTask = async () => {
+    const addTask = useCallback(async () => {
         if (task.trim() === "") {
             setError("Task is required");
             return;
@@ -51,7 +51,7 @@ export default function AddTask() {
         } catch (error) {
             console.log("Error adding task:", error);
         }
-    };
+    }, []);
 
     const handleModalClose = () => {
         setModalVisible(false);

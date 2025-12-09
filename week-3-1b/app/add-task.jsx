@@ -1,12 +1,13 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal } from "react-native";
 import { Link } from "expo-router";
 import { useState } from "react";
-import {router} from "expo-router";
+import { router } from "expo-router";
 import { addDoc, collection } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import ConfirmModal from "../components/ConfirmModal";
 import * as Notifications from "expo-notifications";
+import Animated, { useSharedValue, useAnimatedStyle } from "react-native-reanimated"
 
 export default function AddTask() {
     const [task, setTask] = useState("");
@@ -15,15 +16,21 @@ export default function AddTask() {
     const [modalMessage, setModalMessage] = useState("")
     const [modalType, setModalType] = useState("")
 
-    const {user} = useAuth();
+    const { user } = useAuth();
 
-    const addTask = async () => {
+    const scale = useSharedValue(1);
+    const animatedStyle = useAnimatedStyle(() => ({
+        transform: [{ scale: scale.value }],
+    }));
+
+
+    const handleAddTask = async () => {
         if (task.trim() === "") {
             setError("Task is required!");
             return;
         }
-        
-        if (task.length <3) {
+
+        if (task.length < 3) {
             setError("Task must be at least 3 characters!");
             return;
         }
@@ -31,7 +38,7 @@ export default function AddTask() {
         setError("")
         const newTask = { title: task, completed: false, createdAt: new Date() };
         try {
-           await addDoc(collection(db, "users", user.id, "tasks"), newTask)
+            await addDoc(collection(db, "users", user.id, "tasks"), newTask)
             setModalType("success")
             setModalMessage("Task created successfully!")
             setModalVisible(true);
@@ -43,13 +50,13 @@ export default function AddTask() {
                 },
                 trigger: null
             })
-            
+
         } catch (error) {
             console.log("Error saving task:", error);
         }
 
 
-        
+
         setTask("");
         setModalVisible(true);
     };
@@ -75,16 +82,23 @@ export default function AddTask() {
                     value={task}
                     onChangeText={setTask}
                 />
-                <TouchableOpacity style={styles.addBtn} onPress={addTask}>
-                    <Text style={styles.btnText}>Add</Text>
+                <TouchableOpacity
+                    onPressIn={() => (scale.value = 0.95)}
+                    onPressOut={() => (scale.value = 1)}
+                    onPress={handleAddTask}
+                >
+                    <Animated.View style={[styles.addTaskBtn, animatedStyle]}>
+                        <Text style={styles.addTaskText}>Add New Task</Text>
+                    </Animated.View>
                 </TouchableOpacity>
+
             </View>
             {error ? <Text style={{ color: "red", marginTop: 5, fontSize: 14 }}>{error}</Text> : null}
             <ConfirmModal
-            visible={modalVisible}
-            message={modalMessage}
-            onClose={handleModalClose}
-            type={modalType}
+                visible={modalVisible}
+                message={modalMessage}
+                onClose={handleModalClose}
+                type={modalType}
             />
         </View>
 
@@ -92,7 +106,7 @@ export default function AddTask() {
 }
 
 const styles = StyleSheet.create({
-    container: {padding: 20 },
+    container: { padding: 20 },
     title: { fontSize: 22, fontWeight: "bold", marginBottom: 20 },
     row: { flexDirection: "row", marginBottom: 12 },
     input: {
@@ -114,11 +128,11 @@ const styles = StyleSheet.create({
     btnText: { color: "white", fontWeight: "bold" },
     modalOverlay: {
         flex: 1,
-        backgroundColor: "rgba(0,0,0,0.5)", 
+        backgroundColor: "rgba(0,0,0,0.5)",
         justifyContent: "center",
         alignItems: "center",
-      },
-      modalBox: {
+    },
+    modalBox: {
         backgroundColor: "white",
         width: "80%",
         padding: 20,
@@ -131,8 +145,8 @@ const styles = StyleSheet.create({
         shadowRadius: 4,
         elevation: 5,
         minHeight: 180
-      },
-      modalTitle: {
+    },
+    modalTitle: {
         fontSize: 20,
         fontWeight: "bold",
         color: '#000'

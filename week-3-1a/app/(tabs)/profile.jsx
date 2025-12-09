@@ -9,6 +9,7 @@ import { db } from '../../firebase'
 import * as ImagePicker from 'expo-image-picker';
 import ConfirmModal from '../../components/ConfirmModal'
 import { Image } from 'react-native'
+import Animated, { FadeIn } from 'react-native-reanimated'
 
 const profile = () => {
   const [currentUser, setCurrentUser] = useState(null)
@@ -138,14 +139,14 @@ const profile = () => {
       <Text style={styles.title}>Profile</Text>
 
       {currentUser.image ? (
-        <Image source={{ uri: currentUser.image }} style={styles.image} />
+        <Animated.Image entering={FadeIn.duration(500)}  source={{ uri: currentUser.image }} style={styles.image} />
       ) : (
         <View style={[styles.image, {backgroundColor: "#E5E7EB"}]}>
           <Text>No Image</Text>
         </View>
       )}
 
-      <TouchableOpacity style={styles.btn} onPress={pickImage}>
+      <TouchableOpacity style={styles.btn} onPress={pickImage} activeOpacity={0.7}>
         <Text style={styles.btnText}>Pick Image</Text>
       </TouchableOpacity>
 

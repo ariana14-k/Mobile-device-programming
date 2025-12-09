@@ -1,17 +1,16 @@
 import { StyleSheet, Text, TouchableOpacity, View, ActivityIndicator, Image } from 'react-native'
-import React, { useEffect, useState } from 'react'
-import { onAuthStateChanged, signOut } from 'firebase/auth'
+import { useState } from 'react'
 import { Feather } from '@expo/vector-icons'
-import { auth } from '../../firebase'
 import { router } from "expo-router";
-import { getDoc, doc, updateDoc } from 'firebase/firestore'
+import { doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../firebase'
 import * as ImagePicker from 'expo-image-picker';
 import { useAuth } from '../../context/AuthContext';
-import ConfirmModal from '../../components/ConfirmModal'
+import ConfirmModal from '../../components/ConfirmModal';
+import Animated, {FadeIn, ZoomIn} from 'react-native-reanimated';
 
 const Profile = () => {
-  const { user, loading, logout, setUser } = useAuth();
+  const { user, logout, setUser } = useAuth();
   const [modalVisible, setModalVisible] = useState(false);
   const [modalType, setModalType] = useState("");
   const [modalMessage, setModalMessage] = useState("");
@@ -101,10 +100,11 @@ const Profile = () => {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Profile</Text>
+      <Animated.Text entering={FadeIn.duration(700)} style={styles.title}>Profile</Animated.Text>
 
       {user.image ? (
-        <Image
+        <Animated.Image
+          entering={ZoomIn.duration(600)}
           source={{ uri: user.image }}
           style={{ width: 120, height: 120, borderRadius: 60, marginBottom: 20 }} />
       ) : (
@@ -122,7 +122,7 @@ const Profile = () => {
 
       )}
 
-      <TouchableOpacity style={styles.btn} onPress={pickImage}>
+      <TouchableOpacity style={styles.btn} onPress={pickImage} activeOpacity={0.7}>
         <Text style={styles.btnText}>Pick Image</Text>
       </TouchableOpacity>
 

@@ -3,7 +3,7 @@ import { View, Text, ActivityIndicator, StyleSheet, TextInput, TouchableOpacity 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Activity, useEffect, useState } from "react";
 import { useAuth } from "../../context/AuthContext";
-import { getDoc, doc, updateDoc } from "firebase/firestore";
+import { getDoc, doc, updateDoc, addDoc, collection } from "firebase/firestore";
 import { db } from "../../firebase";
 import ConfirmModal from "../../components/ConfirmModal";
 import * as Notifications from "expo-notifications"
@@ -90,28 +90,38 @@ export default function TaskDetail() {
         }
       },
       trigger: {
-        seconds: 5,
+        seconds: 10,
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL
       }
     })
 
+    const ref = collection(db, "users", user.id, "notifications")
+    await addDoc(ref, {
+      notificationId: notifsId,
+      title: "New reminder",
+      body: "New reminder has been set!",
+      taskTitle: task.title,
+      taskId: id,
+      scheduledAt: new Date(Date.now() + 10 * 1000)
+    })
+
     setNotificationId(notifsId)
 
-    await Notifications.scheduleNotificationAsync({
-                content: {
-                    title: "New Task added!",
-                    body:  `Task ${task.title} has been added successfully!`,
-                    sound: true,
-                    categoryIdentifier: "taskCategory",
-                    data: {
-                      taskId: id
-                    }
-                },
-                trigger: {
-                    seconds: 7,
-                    type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL
-                }
-            })
+    // await Notifications.scheduleNotificationAsync({
+    //             content: {
+    //                 title: "New Task added!",
+    //                 body:  `Task ${task.title} has been added successfully!`,
+    //                 sound: true,
+    //                 categoryIdentifier: "taskCategory",
+    //                 data: {
+    //                   taskId: id
+    //                 }
+    //             },
+    //             trigger: {
+    //                 seconds: 7,
+    //                 type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL
+    //             }
+    //         })
   }
 
   const cancelNotification = async () => {

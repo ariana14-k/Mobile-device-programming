@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { auth } from "../../firebase";
 import {onAuthStateChanged} from 'firebase/auth'
 import { useAuth } from "../../context/AuthContext";
+import Animated, {FadeIn} from "react-native-reanimated"
 
 export default function Home() {
   const { user, setUser, logout, loading } = useAuth();
@@ -18,7 +19,7 @@ export default function Home() {
   }
   return (
     <View style={styles.container}>
-      <Text style={styles.welcome}>Welcome {user.email || "User"}</Text>
+      <Animated.Text entering={FadeIn.duration(500)} style={styles.welcome}>Welcome {user.email || "User"}</Animated.Text>
       <TaskManager />
 
       <TouchableOpacity

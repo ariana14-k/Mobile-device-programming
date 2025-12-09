@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Modal } from "react-native";
 import { Link } from "expo-router";
-import { useState } from "react";
-import {router} from "expo-router";
+import { useState, useCallback } from "react";
+import { router } from "expo-router";
 import { useAuth } from "../context/AuthContext";
-import {addDoc, collection} from "firebase/firestore"
+import { addDoc, collection } from "firebase/firestore"
 import { db } from "../firebase";
 import ConfirmModal from "../components/ConfirmModal";
 import * as Notifications from "expo-notifications";
@@ -15,9 +15,9 @@ export default function AddTask() {
     const [modalType, setModalType] = useState("")
     const [modalMessage, setModalMessage] = useState("")
 
-    const {user} = useAuth();
+    const { user } = useAuth();
 
-    const addTask = async () => {
+    const addTask = useCallback(async () => {
         if (task.trim() === "") {
             setError("Task cannot be empty");
             return;
@@ -29,7 +29,7 @@ export default function AddTask() {
         }
 
         setError("")
-        const newTask = {title: task, completed: false, createdAt: new Date() };
+        const newTask = { title: task, completed: false, createdAt: new Date() };
         try {
             await addDoc(collection(db, "users", user.id, "tasks"), newTask);
             setModalType("success");
@@ -39,7 +39,7 @@ export default function AddTask() {
             await Notifications.scheduleNotificationAsync({
                 content: {
                     title: "New task added",
-                    body:  `Task ${newTask.title} has been added successfully!`,
+                    body: `Task ${newTask.title} has been added successfully!`,
                     sound: true
                 },
                 trigger: null
@@ -49,7 +49,7 @@ export default function AddTask() {
             console.log("Error saving task:", error);
         }
         setTask("");
-    };
+    }, [])
 
     const handleCloseModal = () => {
         setModalVisible(false);
@@ -75,8 +75,8 @@ export default function AddTask() {
                 </TouchableOpacity>
             </View>
             {error ? <Text style={{ fontSize: 14, color: 'red' }}>{error}</Text> : null}
-            
-            <ConfirmModal 
+
+            <ConfirmModal
                 visible={modalVisible}
                 type={modalType}
                 message={modalMessage}
@@ -131,6 +131,6 @@ const styles = StyleSheet.create({
         backgroundColor: '#007AFF',
         paddingVertical: 10,
         paddingHorizontal: 20,
-        borderRadius: 8 
+        borderRadius: 8
     }
 });

@@ -6,7 +6,7 @@ import { db } from "../firebase";
 import { useAuth } from "../context/AuthContext";
 import ConfirmModal from "../components/ConfirmModal";
 import * as Notifications from 'expo-notifications';
-
+import Animated, { useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated';
 export default function AddTask() {
   const [task, setTask] = useState("");
   const [error, setError] = useState("");
@@ -14,7 +14,11 @@ export default function AddTask() {
   const [modalType, setModalType] = useState("");
   const [modalMessage, setModalMessage] = useState("");
 
-  const {user} = useAuth();
+  const scale = useSharedValue(1);
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scale.value }],
+  }));
+  const { user } = useAuth();
 
   const addTask = async () => {
     if (task.trim() === "") {
@@ -32,17 +36,27 @@ export default function AddTask() {
     try {
       const taskRef = await addDoc(collection(db, "users", user.id, "tasks"), newTask);
       setTask("");
-      setModalVisible(true); 
+      setModalVisible(true);
       setModalType("success")
       setModalMessage("Task created successfully!");
 
-      await Notifications.scheduleNotificationAsync({
+      const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
           title: "New Task Added!",
           body: `Task ${newTask.title} has been added successfully.`,
-          data: { taskId: taskRef.id}
+          data: { taskId: taskRef.id }
         },
         trigger: null,
+      })
+
+      const notifsRef = collection(db, "users", user.id, "notifications");
+      await addDoc(notifsRef, {
+        notificationId: notificationId,
+        taskTitle: newTask.title,
+        taskId: taskRef.id,
+        body: "New task added successfully!",
+        title: "New Task",
+        scheduledAt: new Date()
       })
     } catch (e) {
       console.log("Error saving task:", e);
@@ -51,7 +65,7 @@ export default function AddTask() {
 
   const handleCloseModal = () => {
     setModalVisible(false);
-    router.push("/"); 
+    router.push("/");
   };
 
   return (
@@ -70,9 +84,17 @@ export default function AddTask() {
           value={task}
           onChangeText={setTask}
         />
-        <TouchableOpacity style={styles.addBtn} onPress={addTask}>
-          <Text style={styles.btnText}>Add</Text>
+
+        <TouchableOpacity
+          onPressIn={() => (scale.value = 0.5)}
+          onPressOut={() => (scale.value = 1)}
+          onPress={handleAddTask}
+        >
+          <Animated.View style={[styles.addTaskBtn, animatedStyle]}>
+            <Text style={styles.addTaskText}>Add New Task</Text>
+          </Animated.View>
         </TouchableOpacity>
+
       </View>
 
       {error ? <Text style={{ color: "red" }}>{error}</Text> : null}
@@ -123,7 +145,7 @@ const styles = StyleSheet.create({
   },
   modalOverlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)", 
+    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "center",
     alignItems: "center",
   },

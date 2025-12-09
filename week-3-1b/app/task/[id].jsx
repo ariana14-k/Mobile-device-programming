@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { View, Text, ActivityIndicator, StyleSheet, TextInput, TouchableOpacity } from "react-native";
 import { useAuth } from "../../context/AuthContext";
 import { db } from "../../firebase";
-import { doc, getDoc, updateDoc } from "firebase/firestore"
+import { doc, getDoc, updateDoc, addDoc, collection } from "firebase/firestore"
 import ConfirmModal from "../../components/ConfirmModal";
 import * as Notifications from "expo-notifications";
 
@@ -87,23 +87,33 @@ export default function TaskDetail() {
         data: { taskId: id },
       },
       trigger: {
-        seconds: 5,
+        seconds: 10,
         type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
       }
     })
 
-    await Notifications.scheduleNotificationAsync({
-      content: {
-        title: "",
-        body: `Do you want to complete: ${task.title}?`,
-        categoryIdentifier: "taskCategory",
-        data: { taskId: id }
-      },
-      trigger: {
-        seconds: 10,
-        type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
-      }
-    });
+    const ref = collection(db, "users", user.id, "notifications")
+    await addDoc(ref, {
+      notificationId: notificationId,
+      title: "New Reminder",
+      taskTitle: task.title,
+      taskId: id,
+      body: "A new reminder was set.",
+      scheduledAt: new Date(Date.now() + 10 * 1000)
+    })
+
+    // await Notifications.scheduleNotificationAsync({
+    //   content: {
+    //     title: "",
+    //     body: `Do you want to complete: ${task.title}?`,
+    //     categoryIdentifier: "taskCategory",
+    //     data: { taskId: id }
+    //   },
+    //   trigger: {
+    //     seconds: 10,
+    //     type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL,
+    //   }
+    // });
 
 
     setNotificationId(notificationId)
