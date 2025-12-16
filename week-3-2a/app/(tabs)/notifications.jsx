@@ -3,23 +3,7 @@ import { useAuth } from "../../context/AuthContext"
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db } from "../../firebase";
 import { FlatList, StyleSheet, View, Text, TouchableOpacity } from "react-native";
-
-const NotifCard = memo(({ item, onCancel }) => (
-    <View style={styles.card}>
-        <Text style={styles.taskTitle}>Task: {item.taskTitle}</Text>
-
-        <Text style={styles.bodyText}>{item.body}</Text>
-        <Text style={styles.time}>Scheduled: {item.scheduledAt?.toLocaleString()}</Text>
-
-        <TouchableOpacity
-            style={styles.cancelBtn}
-            activeOpacity={0.7}
-            onPress={() => onCancel(item.notificationId)}
-        >
-            <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-    </View>
-))
+import NotifCard from "../../components/NotifCard";
 
 export default function NotificationsScreen() {
     const { user } = useAuth();

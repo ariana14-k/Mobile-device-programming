@@ -6,24 +6,7 @@ import { View, StyleSheet, TouchableOpacity, Alert } from "react-native"
 import { Text } from "react-native";
 import { FlatList } from "react-native";
 import * as Notifications from "expo-notifications";
-
-const NotifCard = memo(({ item, cancel }) => (
-  <View style={styles.card}>
-    <Text style={styles.taskTitle}>Task: {item.taskTitle}</Text>
-
-    <Text style={styles.bodyText}>{item.body}</Text>
-    <Text style={styles.time}>Scheduled: {item.scheduledAt?.toLocaleString()}</Text>
-
-    <TouchableOpacity
-      style={styles.cancelBtn}
-      activeOpacity={0.7}
-      onPress={() => cancel(item.notificationId)}
-    >
-      <Text style={styles.cancelText}>Cancel</Text>
-    </TouchableOpacity>
-  </View>
-));
-
+import NotifCard from "../../components/NotifCard";
 
 export default function NotificationsScreen() {
     const { user } = useAuth();

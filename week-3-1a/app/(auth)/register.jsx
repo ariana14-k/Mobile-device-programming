@@ -5,7 +5,7 @@ import {router} from 'expo-router'
 import {auth} from "../../firebase"
 import { createUserWithEmailAndPassword } from "firebase/auth"
 
-const register = () => {
+const Register = () => {
     const [email, setEmail] = useState("")
     const [password, setPassword] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
@@ -31,7 +31,7 @@ const register = () => {
         }
 
         if (password !== confirmPassword) {
-            setError("Password do not match");
+            setError("Passwords do not match");
             return false;
         }
         setError("")
@@ -113,7 +113,7 @@ const register = () => {
   )
 }
 
-export default register
+export default Register
 
 const styles = StyleSheet.create({
     container: { flex: 1, justifyContent: "center", padding: 20 },

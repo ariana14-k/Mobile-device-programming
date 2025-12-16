@@ -4,23 +4,7 @@ import { useCallback, useEffect, useState, memo } from "react";
 import { collection, onSnapshot, orderBy, query } from "firebase/firestore";
 import { db } from "../../firebase";
 import { Text } from "react-native";
-
-const NotifCard = memo(({ item, cancel }) => (
-    <View style={styles.card}>
-        <Text style={styles.taskTitle}>Task: {item.taskTitle}</Text>
-
-        <Text style={styles.bodyText}>{item.body}</Text>
-        <Text style={styles.time}>Scheduled: {item.scheduledAt?.toLocaleString()}</Text>
-
-        <TouchableOpacity
-            style={styles.cancelBtn}
-            activeOpacity={0.7}
-            onPress={() => cancel(item.notificationId)}
-        >
-            <Text style={styles.cancelText}>Cancel</Text>
-        </TouchableOpacity>
-    </View>
-));
+import NotifCard from "../../components/NotifCard";
 
 export default function NotificationsScreen() {
     const { user } = useAuth();
